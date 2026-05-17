@@ -1,1 +1,38 @@
+name: Refresh Job Board
 
+on:
+  schedule:
+    # Every day at 07:00 UAE time (03:00 UTC)
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run scraper
+        env:
+          # Optional: add ANTHROPIC_API_KEY in GitHub Secrets for AI match reasons
+          # Settings → Secrets and variables → Actions → New repository secret
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/scrape.py
+
+      - name: Commit updated jobs.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/jobs.json
+          git diff --cached --quiet || git commit -m "chore: refresh jobs $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
